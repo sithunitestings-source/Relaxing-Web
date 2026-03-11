@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chroma flow · mindful play</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0b0d10;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Roboto, system-ui, -apple-system, sans-serif;
+            touch-action: none;  /* prevents scrolling while drawing */
+        }
+
+        .relax-container {
+            background: #1a1e26;
+            border-radius: 3rem 3rem 2rem 2rem;
+            box-shadow: 0 30px 45px -20px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.06);
+            padding: 1.8rem 2rem 2.5rem 2rem;
+            width: fit-content;
+            max-width: 98vw;
+        }
+
+        .canvas-wrapper {
+            background: #11141c;
+            border-radius: 2.2rem;
+            padding: 12px;
+            box-shadow: inset 0 6px 10px rgba(0,0,0,0.6), 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        canvas {
+            display: block;
+            width: min(75vw, 75vh, 700px);
+            height: min(75vw, 75vh, 700px);
+            border-radius: 1.6rem;
+            cursor: crosshair;
+            background-color: #181e28; /* fallback */
+            box-shadow: 0 0 0 1px #3e4350 inset, 0 0 0 2px #2c313d inset;
+            transition: box-shadow 0.2s ease;
+        }
+
+        canvas:active {
+            box-shadow: 0 0 0 2px #7f8c9a inset, 0 0 0 3px #4c5a70 inset;
+        }
+
+        .palette-mood {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 1.6rem 0.3rem 0.8rem 0.3rem;
+            flex-wrap: wrap;
+            gap: 0.8rem 0.3rem;
+        }
+
+        .gentle-slider {
+            flex: 2;
+            min-width: 200px;
+            background: #262d3a;
+            padding: 0.5rem 1.2rem;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            box-shadow: inset 0 3px 8px #0b0e14;
+        }
+
+        .gentle-slider label {
+            color: #bac8dc;
+            font-weight: 300;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        input[type=range] {
+            flex: 1;
+            height: 5px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #b1d0ff, #ffe6b0, #ffb3c6);
+            border-radius: 10px;
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px #ffd7a0, 0 0 0 2px #3c4455;
+            cursor: grab;
+            transition: 0.07s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #fffcf0;
+        }
+
+        .soft-buttons {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: #2b3445;
+            border: none;
+            color: #d3e0f0;
+            font-size: 1.4rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 7px 12px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.1);
+            transition: all 0.15s ease;
+            font-weight: 300;
+            line-height: 1;
+        }
+        .icon-btn:hover {
+            background: #3f4b62;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 18px rgba(0,0,0,0.6);
+        }
+        .icon-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 3px 6px black;
+        }
+
+        .breath-hint {
+            text-align: center;
+            color: #98a9c7;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            font-weight: 300;
+            background: rgba(20, 28, 40, 0.7);
+            margin-top: 1rem;
+            padding: 0.5rem 1.2rem;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            border: 1px solid #3f4b5e;
+        }
+
+        .breath-hint span {
+            opacity: 0.8;
+            display: inline-block;
+            animation: softPulse 3s infinite;
+        }
+
+        @keyframes softPulse {
+            0% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.02); text-shadow: 0 0 8px #c5e0ff; }
+            100% { opacity: 0.5; transform: scale(1); }
+        }
+
+        footer {
+            color: #4b5770;
+            font-size: 0.8rem;
+            margin-top: 1.2rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="relax-container">
+        <div class="canvas-wrapper">
+            <canvas id="colorCanvas" width="700" height="700"></canvas>
+        </div>
+
+        <div class="palette-mood">
+            <div class="gentle-slider">
+                <label for="hueShift">🌊 hue</label>
+                <input type="range" id="hueShift" min="0" max="360" value="180" step="1">
+            </div>
+            <div class="soft-buttons">
+                <button class="icon-btn" id="clearCanvas" title="soft reset">🧘</button>
+                <button class="icon-btn" id="saveCanvas" title="save moment">🌸</button>
+            </div>
+        </div>
+
+        <div class="breath-hint">
+            <span>✦</span>  move your cursor slowly — let the colors flow  <span>✦</span>
+        </div>
+        <footer>mindful strokes · every path is a new pattern</footer>
+    </div>
+
+    <script>
+        (function() {
+            const canvas = document.getElementById('colorCanvas');
+            const ctx = canvas.getContext('2d', { alpha: false }); // no transparency for smoother blend
+
+            // set canvas resolution (fixed 700x700)
+            const size = 700;
+            canvas.width = size;
+            canvas.height = size;
+
+            // state
+            let lastX = null, lastY = null;
+            let hue = 180;               // initial hue (cyan / calm)
+            let thickness = 24;           // base brush diameter – soft & wide
+            let drawing = false;          // true when mouse down
+
+            // fill with gentle dark background at start
+            function initBackground() {
+                ctx.fillStyle = '#1b212e';   // deep, warm dark
+                ctx.fillRect(0, 0, size, size);
+                // add tiny gradient for softness
+                const grad = ctx.createRadialGradient(300, 300, 100, 400, 400, 800);
+                grad.addColorStop(0, 'rgba(75, 100, 140, 0.08)');
+                grad.addColorStop(1, 'rgba(20, 20, 30, 0.2)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, size, size);
+            }
+            initBackground();
+
+            // ----- helper: get a smooth pastel color based on hue and movement -----
+            function getFlowColor(baseHue, offset = 0) {
+                // shift hue slightly with offset to create gentle variation
+                let h = (baseHue + offset) % 360;
+                // high saturation for rich but soft feel, medium lightness (pastel range)
+                return `hsl(${h}, 75%, 70%)`;   // lightness 70% = calm pastel
+            }
+
+            // ----- draw a gradient dot (blend with previous softly) -----
+            function paintDot(x, y, pressure = 1.0) {
+                // radius depends on smooth movement: thicker when slower (we use fixed but beautiful)
+                const baseRadius = thickness * 0.5; 
+                // add tiny randomness to feel organic (but controlled)
+                const radius = baseRadius * (0.9 + 0.2 * Math.sin(x * 0.02 + y * 0.03));
+
+                // hue variation based on position (makes patterns flow)
+                const hueOffset = (x * 0.08 + y * 0.12) % 360; 
+                const mainColor = getFlowColor(hue, hueOffset);
+
+                // secondary color for gradient (slight complementary shift)
+                const secondHue = (hue + 40 + x * 0.02) % 360;
+                const secondColor = `hsl(${secondHue}, 80%, 75%)`;
+
+                // create radial gradient that blends into existing background
+                const gradient = ctx.createRadialGradient(x, y, radius * 0.2, x, y, radius * 1.6);
+                gradient.addColorStop(0, mainColor);
+                gradient.addColorStop(0.5, secondColor);
+                gradient.addColorStop(1, 'rgba(28, 35, 48, 0.1)');  // fade to background tint
+
+                ctx.beginPath();
+                ctx.arc(x, y, radius * 1.8, 0, 2 * Math.PI);
+
+                // use composite operation to gently blend (soft light = ethereal)
+                ctx.globalCompositeOperation = 'soft-light';
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // second small dot with hard-light to give luminous accent
+                ctx.globalCompositeOperation = 'hard-light';
+                const accentGrad = ctx.createRadialGradient(x-2, y-2, radius*0.1, x, y, radius);
+                accentGrad.addColorStop(0, `hsl(${hue}, 85%, 88%)`);
+                accentGrad.addColorStop(0.7, 'transparent');
+                ctx.fillStyle = accentGrad;
+                ctx.beginPath();
+                ctx.arc(x-1, y-1, radius * 0.9, 0, 2 * Math.PI);
+                ctx.fill();
+
+                // restore composite to default (important for future drawing)
+                ctx.globalCompositeOperation = 'source-over';
+            }
+
+            // ----- draw line between two points (interpolate for smooth patterns) -----
+            function drawSegment(x1, y1, x2, y2) {
+                const distance = Math.hypot(x2 - x1, y2 - y1);
+                // step size smaller than radius for connected patterns
+                const step = 6; 
+                const steps = Math.max(1, Math.floor(distance / step));
+                
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const cx = x1 + (x2 - x1) * t;
+                    const cy = y1 + (y2 - y1) * t;
+                    // slight pressure variation based on step (simulate breath)
+                    const pressure = 0.7 + 0.3 * Math.sin(t * Math.PI * 2 + performance.now() * 0.002);
+                    paintDot(cx, cy, pressure);
+                }
+            }
+
+            // ----- mouse/touch move handler -----
+            function handleMove(x, y) {
+                if (!drawing) return;
+
+                // clamp to canvas boundaries
+                x = Math.min(size - 2, Math.max(2, x));
+                y = Math.min(size - 2, Math.max(2, y));
+
+                if (lastX !== null && lastY !== null) {
+                    drawSegment(lastX, lastY, x, y);
+                } else {
+                    // first dot after click/drag starts
+                    paintDot(x, y, 1.0);
+                }
+
+                lastX = x;
+                lastY = y;
+
+                // tiny auto-update hue over time — very subtle shift (relaxing)
+                hue = (hue + 0.1) % 360;
+                document.getElementById('hueShift').value = Math.round(hue);
+            }
+
+            // ----- reset drawing state -----
+            function stopDrawing() {
+                drawing = false;
+                lastX = null;
+                lastY = null;
+            }
+
+            // ----- EVENT LISTENERS (mouse + touch) -----
+            canvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                drawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                lastX = mouseX;
+                lastY = mouseY;
+                paintDot(mouseX, mouseY, 1.0); // start with a dot
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                handleMove(mouseX, mouseY);
+            });
+
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // touch events (mobile friendly)
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                drawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const touchX = (touch.clientX - rect.left) * scaleX;
+                const touchY = (touch.clientY - rect.top) * scaleY;
+                lastX = touchX;
+                lastY = touchY;
+                paintDot(touchX, touchY, 1.0);
+            });
+
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const touchX = (touch.clientX - rect.left) * scaleX;
+                const touchY = (touch.clientY - rect.top) * scaleY;
+                handleMove(touchX, touchY);
+            });
+
+            canvas.addEventListener('touchend', stopDrawing);
+            canvas.addEventListener('touchcancel', stopDrawing);
+
+            // ----- hue slider control -----
+            const hueSlider = document.getElementById('hueShift');
+            hueSlider.addEventListener('input', (e) => {
+                hue = parseInt(e.target.value, 10);
+            });
+
+            // ----- clear canvas (soft reset) -----
+            document.getElementById('clearCanvas').addEventListener('click', () => {
+                // gentle fade instead of harsh clear
+                ctx.fillStyle = '#1b212e';
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillRect(0, 0, size, size);
+                // re-add subtle gradient
+                const grad = ctx.createRadialGradient(300, 300, 100, 400, 400, 800);
+                grad.addColorStop(0, 'rgba(85, 110, 150, 0.1)');
+                grad.addColorStop(1, 'rgba(20, 20, 30, 0.2)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, size, size);
+                stopDrawing();
+            });
+
+            // ----- save snapshot (just for mindfulness) -----
+            document.getElementById('saveCanvas').addEventListener('click', () => {
+                // create a temporary link to download canvas as PNG
+                const link = document.createElement('a');
+                link.download = 'chroma-flow-'+ new Date().toISOString().slice(0,19).replace(/:/g, '-') + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+
+            // extra: adjust brush thickness with keyboard arrows? not needed, but we use gentle fixed.
+            // optional: change thickness via slider? for simplicity we keep thick soft.
+            // but we can add tiny variation with scroll? but no, keep minimal.
+
+            // also add window resize robustness: keep canvas crisp (already fixed)
+            // final touch: dynamic hint of hue on slider background (just aesthetic)
+            hueSlider.style.background = `linear-gradient(90deg, 
+                hsl(${hue}, 80%, 70%), 
+                hsl(${(hue+60)%360}, 80%, 70%), 
+                hsl(${(hue+120)%360}, 80%, 70%))`;
+
+            hueSlider.addEventListener('input', function() {
+                this.style.background = `linear-gradient(90deg, 
+                    hsl(${this.value}, 80%, 70%), 
+                    hsl(${(parseInt(this.value)+60)%360}, 80%, 70%), 
+                    hsl(${(parseInt(this.value)+120)%360}, 80%, 70%))`;
+            });
+
+            // breathe life: small idle animation (butterfly effect) — shift hue slightly every few sec
+            setInterval(() => {
+                if (!drawing) {
+                    // even when not drawing, shift hue slightly to keep freshness (0.5° per sec)
+                    hue = (hue + 0.3) % 360;
+                    hueSlider.value = Math.round(hue);
+                    hueSlider.style.background = `linear-gradient(90deg, 
+                        hsl(${hue}, 80%, 70%), 
+                        hsl(${(hue+60)%360}, 80%, 70%), 
+                        hsl(${(hue+120)%360}, 80%, 70%))`;
+                }
+            }, 300);
+        })();
+    </script>
+</body>
+</html>
